@@ -6,9 +6,24 @@ import "./styles.css"
 const axios = require("axios")
 
 function App() {
-  const [queryState, setQueryState] = useState("")
-  const [resultsState, setResultsState] = useState([])
-  const [errorState, setErrorState] = useState("")
+  const [queries, setQueries] = useState("")
+  const [results, setResults] = useState([])
+  const [errors, setErrors] = useState("")
+
+  // Example "hit" returned by HackerNews API:
+  // Object {created_at: "2017-05-01T01:55:04.000Z",
+  // title: "“A closure is a poor man’s object; an object is a poor man’s closure” (2003)",
+  // url: "http://people.csail.mit.edu/gregs/ll1-discuss-archive-html/msg03277.html",
+  // author: "noblethrasher", points: 289…}
+  const Hit = ({ created_at, title, url, author, points }) => (
+    <li>
+      <a href="{url}">{title}</a> by {author} ({points} points) on{" "}
+      {// Make timestamp readable by converting
+      // "2017-05-01T01:55:04.000Z" to
+      // "2017-05-01 at 01:55:04"
+      created_at.replace("T", " at ").replace(".000Z", "")}
+    </li>
+  )
 
   const searchHackerNews = function accessAPI(query) {
     const encodedURI = window.encodeURI(
@@ -20,31 +35,12 @@ function App() {
 
     function handleError(error) {
       console.warn(error)
-      setErrorState(error.toString())
+      setErrors(error.toString())
       return null
     }
 
-    // Example "hit" returned by HackerNews API:
-    // Object {created_at: "2017-05-01T01:55:04.000Z",
-    // title: "“A closure is a poor man’s object; an object is a poor man’s closure” (2003)",
-    // url: "http://people.csail.mit.edu/gregs/ll1-discuss-archive-html/msg03277.html",
-    // author: "noblethrasher", points: 289…}
-    const formatHit = ({ created_at, title, url, author, points }) => (
-      <li>
-        <a href="{url}">{title}</a> by {author} ({points} points) on{" "}
-        {// Make timestamp readable by converting
-        // "2017-05-01T01:55:04.000Z" to
-        // "2017-05-01 at 01:55:04"
-        created_at.replace("T", " at ").replace(".000Z", "")}
-      </li>
-    )
-
     const updateResults = hits => {
-      let completeResults = ""
-      console.log(formatHit(hits[0]))
-      //hits.map(hit => (completeResults += hit));
-      //hits.reduce(completeResults, hit)
-      setResultsState(formatHit(hits[0]))
+      setResults(hits)
     }
 
     const resultsFromAPI = axios
@@ -59,14 +55,27 @@ function App() {
     <div className="App">
       <h1>Hello CodeSandbox</h1>
       <h2>Start editing to see some magic happen!</h2>
-      <p>{errorState}</p>
+      <p>{errors}</p>
       <form>
         <input
           placeholder="Search for..."
-          ref={input => setQueryState(input)}
+          ref={input => setQueries(input)}
           onChange={input => searchHackerNews(input)}
         />
-        <ul>{resultsState}</ul>
+        <ul class="searchResults">
+          {results.map((hit, i) => (
+            <Hit
+              // HackerNews search hit returns 5 elements
+              created_at={hit.created_at}
+              title={hit.title}
+              url={hit.url}
+              author={hit.author}
+              points={hit.points}
+              // Prevent duplicate keys by appending index:
+              key={hit.title + i}
+            />
+          ))}
+        </ul>
       </form>
     </div>
   )
