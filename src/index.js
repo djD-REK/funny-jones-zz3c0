@@ -1,7 +1,6 @@
 import React, { useState } from "react"
 import { createStore } from "redux"
 import ReactDOM from "react-dom"
-import SearchField from "react-search-field"
 
 import { Provider, connect, useSelector, useDispatch } from "react-redux"
 
@@ -9,19 +8,26 @@ import "./styles.css"
 
 const axios = require("axios")
 
-function rootReducer(state = [], query) {
-  return state.concat(query)
+function rootReducer(state = [], action) {
+  switch (action.type) {
+    case "ADD_SEARCH": {
+      const { query } = action.payload
+      return state.concat(query)
+    }
+    default:
+      return state
+  }
 }
 
 function App() {
   // React Hooks declarations
-  const [queries, setQueries] = useState("")
   const [results, setResults] = useState([])
   const [errors, setErrors] = useState("")
   const [searches, setSearches] = useState([])
+  const [query, setQuery] = useState("")
 
   // React-Redux section
-  const reduxSearches = useSelector(state => state.queries)
+  const reduxSearches = useSelector(state => state)
   const dispatch = useDispatch(query => query)
 
   /**
@@ -33,7 +39,6 @@ function App() {
    * @property {string} author
    * @property {integer} points
    */
-
   const Hit = ({ created_at, title, url, author, points }) => (
     <li>
       <a href="{url}">{title}</a> by {author} ({points} points) on{" "}
@@ -65,7 +70,7 @@ function App() {
       setResults(hits)
     }
 
-    const resultsFromAPI = axios
+    const makeCallToAPI = axios
       .get(encodedURI)
       .then(({ data }) => {
         updateResults(data.hits)
@@ -73,58 +78,92 @@ function App() {
       .catch(handleError)
   }
 
-  const handleClick = input => {
-    searchHackerNews(input)
+  const handleClick = () => {
+    searchHackerNews(query)
 
     // Save search term state to React Hooks
-    setSearches(searches.concat(input))
+    setSearches(searches.concat(query))
 
     // Save search term state using Redux
-    dispatch({ type: "ADD_SEARCH" })
+    dispatch({ type: "ADD_SEARCH", payload: { query } })
+  }
+
+  const updateQuery = event => {
+    setQuery(event.target.value)
+  }
+
+  const keyPressed = event => {
+    if (event.key === "Enter") {
+      handleClick()
+    }
+  }
+
+  const submitHandler = e => {
+    e.preventDefault()
   }
 
   return (
     <div className="App">
       <h1>HackerNews API React / Redux Example</h1>
-      <p>{errors}</p>
+      <h3>{errors}</h3>
       <h2>Previous searches: (React Hooks)</h2>
-      {searches.map((query, i) => (
-        <Search
-          query={query}
-          // Prevent duplicate keys by appending index:
-          key={query + i}
-        />
-      ))}
+      <ul>
+        {searches.map((query, i) => (
+          <Search
+            query={query}
+            // Prevent duplicate keys by appending index:
+            key={query + i}
+          />
+        ))}
+      </ul>
       <h2>Previous searches: (Redux)</h2>
-      {useSelector(state => state).map((query, i) => (
-        <Search
-          query={query[0]}
-          // Prevent duplicate keys by appending index:
-          key={query + i}
-        />
-      ))}
-      <form>
-        <SearchField
-          placeholder="Search for..."
-          classNames="search-field"
-          onEnter={handleClick}
-          onSearchClick={handleClick}
-        />
-        <ul className="searchResults">
-          {results.map((hit, i) => (
-            <Hit
-              // HackerNews search hit returns 5 elements
-              created_at={hit.created_at}
-              title={hit.title}
-              url={hit.url}
-              author={hit.author}
-              points={hit.points}
-              // Prevent duplicate keys by appending index:
-              key={hit.title + i}
-            />
-          ))}
-        </ul>
+      <ul>
+        {reduxSearches.map((query, i) => (
+          <Search
+            query={query}
+            // Prevent duplicate keys by appending index:
+            key={query + i}
+          />
+        ))}
+      </ul>
+
+      <div className="break" />
+
+      <form onSubmit={submitHandler}>
+        <div>
+          <input
+            className="search-field-input"
+            placeholder="Search for..."
+            type="text"
+            onChange={updateQuery}
+            onKeyPress={keyPressed}
+          />
+          <button
+            className="search-field-button"
+            type="button"
+            onClick={handleClick}
+          >
+            Search
+          </button>
+        </div>
       </form>
+
+      <div className="break" />
+
+      <ul className="searchResults">
+        {results.map((hit, i) => (
+          <Hit
+            // HackerNews search hit returns 5 elements
+            created_at={hit.created_at}
+            title={hit.title}
+            url={hit.url}
+            author={hit.author}
+            points={hit.points}
+            // Prevent duplicate keys by appending index:
+            key={hit.title + i}
+          />
+        ))}
+      </ul>
     </div>
   )
 }
@@ -140,5 +179,5 @@ ReactDOM.render(
   <Provider store={store}>
     <App />
   </Provider>,
-  document.getElementById("root")
+  rootElement
 )
